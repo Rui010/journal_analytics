@@ -68,7 +68,7 @@ def parse_text_by_llm(content: str, prompt_filename: str) -> Optional[Dict[str, 
         try:
             client = genai.Client(api_key=api_key)
             response = client.models.generate_content(
-                model="gemini-2.0-flash-lite",
+                model="gemini-2.5-flash-lite",
                 contents=prompt,
             )
             time.sleep(1)  # レート制限対策のためのスリープ
@@ -93,6 +93,7 @@ def parse_text_by_llm(content: str, prompt_filename: str) -> Optional[Dict[str, 
                     ) < e
             else:
                 # logger.error(f"Gemini APIの制限に達しました: {e}")
+                print(f"Gemini APIの制限に達しました: {e}")
                 raise SystemExit(
                     "Gemini APIの制限に達したため、プログラムを終了します。"
                 )
@@ -157,7 +158,7 @@ def main():
         html_files = [f for f in os.listdir(input_dir) if f.endswith(".html")]
         html_files.sort(reverse=True)  # 日付が先頭にある場合はこれで降順ソート
 
-        for filename in html_files:
+        for filename in html_files[0:60]:
             input_path = os.path.join(input_dir, filename)
             post_html_to_md(input_path, output_journal_path)
             print(
