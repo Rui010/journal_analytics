@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 from datetime import date, datetime, timedelta
 import os
 from dotenv import load_dotenv
+from botocore.exceptions import BotoCoreError, ClientError
 from google import genai
 from google.genai.errors import APIError
 from typing import Any, Dict, Optional
@@ -71,7 +72,7 @@ def parse_text_by_llm(content: str, prompt_filename: str) -> Optional[Dict[str, 
         try:
             client = genai.Client(api_key=api_key)
             response = client.models.generate_content(
-                model="gemini-2.5-flash-lite",
+                model="gemini-3.1-flash-lite",
                 contents=prompt,
             )
             time.sleep(1)  # レート制限対策のためのスリープ
@@ -93,7 +94,7 @@ def parse_text_by_llm(content: str, prompt_filename: str) -> Optional[Dict[str, 
                     # logger.error(f"リトライ回数を超えました: {e}")
                     raise SystemExit(
                         "Gemini APIのサーバエラーにより、プログラムを終了します。"
-                    ) < e
+                    ) from e
             else:
                 # logger.error(f"Gemini APIの制限に達しました: {e}")
                 print(f"Gemini APIの制限に達しました: {e}")
@@ -101,13 +102,7 @@ def parse_text_by_llm(content: str, prompt_filename: str) -> Optional[Dict[str, 
                     "Gemini APIの制限に達したため、プログラムを終了します。"
                 )
 
-        except json.JSONDecodeError as e:
-            # logger.error(f"[JSON ERROR] パース失敗: {e}")
-            # logger.error(f"[RAW OUTPUT] {response.text}")
-            return None
-
-        except Exception as e:
-            # logger.error(f"予期しないエラーが発生しました: {e}")
+        except json.JSONDecodeError:
             return None
 
 
@@ -141,12 +136,10 @@ def save_data(file_path: str, data: Dict[str, Any]) -> None:
 
         print(f"分析データを保存しました: {file_path}")
 
-    except IOError as e:
+    except OSError as e:
         print(f"エラー: ファイルの保存に失敗しました: {str(e)}")
-    except TypeError as e:
+    except (TypeError, ValueError) as e:
         print(f"エラー: データ形式が不正です: {str(e)}")
-    except Exception as e:
-        print(f"エラー: 予期せぬエラーが発生しました: {str(e)}")
 
 
 def main():
@@ -203,7 +196,7 @@ def main():
         print("ジャーナル分析とトレーニング分析を行いました")
         save_data(str(output_analysis_path), combined_analysis)
 
-    except Exception as e:
+    except (BotoCoreError, ClientError, OSError, ValueError) as e:
         print(f"エラーが発生しました: {str(e)}")
 
 
